@@ -49,15 +49,31 @@ async def enroll_face(
 ) -> Dict[str, Any]:
     """Enroll a new face by extracting and storing its embedding"""
     try:
+        # Validate file before reading it
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # Check file size to prevent extremely large uploads
         image_bytes = await file.read()
+        
+        # Check if file is actually empty
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Limit file size (e.g., 10MB)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large, max 10MB allowed")
+        
         face_service = get_face_service()
         result = await face_service.enroll_face(user_id, name, image_bytes, db)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.error(f"Enrollment error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Enrollment failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Enrollment failed due to server error")
 
 
 @router.post("/verify", response_model=VerifyResponse)
@@ -67,15 +83,31 @@ async def verify_face(
 ) -> Dict[str, Any]:
     """Verify a face against enrolled faces"""
     try:
+        # Validate file before reading it
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # Check file size to prevent extremely large uploads
         image_bytes = await file.read()
+        
+        # Check if file is actually empty
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Limit file size (e.g., 10MB)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large, max 10MB allowed")
+        
         face_service = get_face_service()
         result = await face_service.verify_face(image_bytes, db)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.error(f"Verification error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Verification failed due to server error")
 
 
 @router.post("/login-with-face")
@@ -86,7 +118,21 @@ async def login_with_face(
 ) -> Dict[str, Any]:
     """Login with face recognition - verifies face and creates session if successful"""
     try:
+        # Validate file before reading it
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # Check file size to prevent extremely large uploads
         image_bytes = await file.read()
+        
+        # Check if file is actually empty
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Limit file size (e.g., 10MB)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large, max 10MB allowed")
+        
         face_service = get_face_service()
         verification_result = await face_service.verify_face(image_bytes, db)
         

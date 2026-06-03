@@ -31,8 +31,20 @@ async def detect_face_spoofing(image: UploadFile = File(...)):
         DetectionResult: Contains spoofing detection results
     """
     try:
-        # Read the uploaded image
+        # Validate file before reading it
+        if not image.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # Check file size to prevent extremely large uploads
         contents = await image.read()
+        
+        # Check if file is actually empty
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Limit file size (e.g., 10MB)
+        if len(contents) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large, max 10MB allowed")
         
         # Process the image using the service
         result = detection_service.detect_from_file(contents)
@@ -40,8 +52,10 @@ async def detect_face_spoofing(image: UploadFile = File(...)):
         return result
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Detection failed due to server error")
 
 @router.post("/detect_base64", response_model=DetectionResult)
 async def detect_face_spoofing_base64(base64_image: str):

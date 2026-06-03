@@ -41,9 +41,28 @@ async def enroll_face(
 ):
     """Enroll a new face by extracting and storing its embedding"""
     try:
-        # Read and decode image
+        # Validate file before reading it
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # Check file size to prevent extremely large uploads
+        # Note: We can't check content length directly from UploadFile, so we'll read in chunks if needed
         image_bytes = await file.read()
-        image = image_to_numpy(image_bytes)
+        
+        # Check if file is actually empty
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Limit file size (e.g., 10MB)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large, max 10MB allowed")
+        
+        # Try to convert image to numpy array to validate it's a proper image
+        try:
+            image = image_to_numpy(image_bytes)
+        except Exception as img_error:
+            logger.error(f"Image conversion error: {str(img_error)}")
+            raise HTTPException(status_code=400, detail="Invalid image format")
         
         # Detect face
         landmarks = detector.detect_face(image)
@@ -87,7 +106,7 @@ async def enroll_face(
         raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.error(f"Enrollment error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Enrollment failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Enrollment failed due to server error")
 
 
 @router.post("/verify", response_model=VerifyResponse)
@@ -97,9 +116,27 @@ async def verify_face(
 ):
     """Verify a face against enrolled faces"""
     try:
-        # Read and decode image
+        # Validate file before reading it
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # Check file size to prevent extremely large uploads
         image_bytes = await file.read()
-        image = image_to_numpy(image_bytes)
+        
+        # Check if file is actually empty
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Limit file size (e.g., 10MB)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large, max 10MB allowed")
+        
+        # Try to convert image to numpy array to validate it's a proper image
+        try:
+            image = image_to_numpy(image_bytes)
+        except Exception as img_error:
+            logger.error(f"Image conversion error: {str(img_error)}")
+            raise HTTPException(status_code=400, detail="Invalid image format")
         
         # Detect face
         landmarks = detector.detect_face(image)
@@ -139,4 +176,4 @@ async def verify_face(
         raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.error(f"Verification error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Verification failed due to server error")
